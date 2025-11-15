@@ -1,4 +1,4 @@
-module github.com/asanoyuuki/go-google-auth
+module github.com/yuki5155/go-google-auth
 
 go 1.25
 
