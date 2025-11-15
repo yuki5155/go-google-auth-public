@@ -1,0 +1,24 @@
+# ローカル開発用Dockerfile
+FROM golang:1.25-alpine
+
+# 作業ディレクトリを設定
+WORKDIR /app
+
+# 開発に必要なツールをインストール
+RUN apk add --no-cache git curl
+
+# Airをインストール（ホットリロード用）
+RUN go install github.com/air-verse/air@latest
+
+# ソースコードをコピー
+COPY . .
+
+# 依存関係をダウンロード
+RUN go mod download || true
+
+# ポート8080を公開
+EXPOSE 8080
+
+# Airを使用してホットリロード対応で起動
+CMD ["air", "-c", ".air.toml"]
+
