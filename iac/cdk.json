@@ -1,6 +1,6 @@
 {
-    "app": "npx ts-node --prefer-ts-exts bin/test-network.ts",
-    "// note": "Use --app flag to specify different test files: bin/test-network.ts, bin/test-database.ts, bin/test-backend.ts, bin/test-frontend.ts",
+    "app": "npx ts-node --prefer-ts-exts bin/network.ts",
+    "// note": "Use --app flag to specify different test files: bin/network.ts, bin/database.ts, bin/backend.ts, bin/frontend.ts",
     "watch": {
       "include": [
         "**"
