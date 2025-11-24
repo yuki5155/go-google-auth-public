@@ -66,7 +66,7 @@ jobs:
       - name: Deploy Network Stack
         if: github.event.inputs.action == 'deploy' || (github.event.inputs.action == '' && github.event_name == 'push')
         run: |
-          cd iac-lib-test
+          cd iac
           echo "=== Deploying Network Stack from NPM Package ==="
           
           ENVIRONMENT=${{ github.event.inputs.environment || 'dev' }}
