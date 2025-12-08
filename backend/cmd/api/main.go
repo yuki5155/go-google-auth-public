@@ -23,6 +23,7 @@ func main() {
 	// ルーティング設定
 	r.GET(helloHandler.Path, helloHandler.Handle)
 	r.GET(healthHandler.Path, healthHandler.Handle)
+	r.GET("/health/ready", healthHandler.Handle)
 
 	// サーバー起動
 	addr := fmt.Sprintf(":%s", cfg.Port)

@@ -69,8 +69,9 @@ import {
         // We use an escape hatch to remove the command override so the Dockerfile's CMD is used.
         if (backendStack.service) {
           const cfnTaskDef = backendStack.service.taskDefinition.node.defaultChild as cdk.aws_ecs.CfnTaskDefinition;
-          // Index 1 corresponds to the backend container (index 0 is the migration container)
-          cfnTaskDef.addPropertyOverride('ContainerDefinitions.1.Command', undefined);
+          // Index 0 corresponds to the backend container (it is the only container in the main task definition)
+          // The migration container is in a separate task definition.
+          cfnTaskDef.addPropertyOverride('ContainerDefinitions.0.Command', undefined);
           console.log('✅ Removed hardcoded FastAPI command from Task Definition');
         }
     
