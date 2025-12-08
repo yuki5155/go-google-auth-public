@@ -15,10 +15,13 @@ COPY . .
 # GOOS=linux: Linux向けにクロスコンパイル
 RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/api
 
-# 実行ステージ（軽量なdistrolessイメージを使用）
-FROM gcr.io/distroless/static-debian12
+# 実行ステージ（Alpineを使用）
+FROM alpine:latest
 
 WORKDIR /
+
+# 必要なパッケージ（curl）をインストール
+RUN apk --no-cache add curl
 
 # ビルドステージからバイナリをコピー
 COPY --from=builder /app/main /main
@@ -26,8 +29,9 @@ COPY --from=builder /app/main /main
 # ポートの公開
 EXPOSE 8080
 
-# 非rootユーザーで実行（セキュリティ向上）
-USER nonroot:nonroot
+# 実行ユーザーの作成と切り替え
+RUN addgroup -S nonroot && adduser -S nonroot -G nonroot
+USER nonroot
 
 # アプリケーションの実行
 CMD ["/main"]

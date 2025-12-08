@@ -71,8 +71,9 @@ import {
           const cfnTaskDef = backendStack.service.taskDefinition.node.defaultChild as cdk.aws_ecs.CfnTaskDefinition;
           // Index 0 corresponds to the backend container (it is the only container in the main task definition)
           // The migration container is in a separate task definition.
-          cfnTaskDef.addPropertyOverride('ContainerDefinitions.0.Command', undefined);
-          console.log('✅ Removed hardcoded FastAPI command from Task Definition');
+          // Explicitly set the command to run the Go binary, overriding the hardcoded 'uvicorn' command.
+          cfnTaskDef.addPropertyOverride('ContainerDefinitions.0.Command', ['/main']);
+          console.log('✅ Overridden hardcoded FastAPI command with Go binary command');
         }
     
         console.log(`✅ Successfully created ${stackName}`);
