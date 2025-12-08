@@ -45,7 +45,7 @@ import {
 
     try {
         // Create Backend Stack using the published npm package
-        new BackendStack(app, stackName, {
+        const backendStack = new BackendStack(app, stackName, {
           projectName,
           environment,
           domainName,
@@ -63,6 +63,16 @@ import {
           },
           tags: createDefaultTags(projectName, environment, STACK_TYPES.BACKEND, 'standard')
         });
+
+        // Fix for Go backend: Remove hardcoded FastAPI command
+        // The automation-deploy-template-iac package hardcodes the command to run 'uvicorn', which fails for Go.
+        // We use an escape hatch to remove the command override so the Dockerfile's CMD is used.
+        if (backendStack.service) {
+          const cfnTaskDef = backendStack.service.taskDefinition.node.defaultChild as cdk.aws_ecs.CfnTaskDefinition;
+          // Index 1 corresponds to the backend container (index 0 is the migration container)
+          cfnTaskDef.addPropertyOverride('ContainerDefinitions.1.Command', undefined);
+          console.log('✅ Removed hardcoded FastAPI command from Task Definition');
+        }
     
         console.log(`✅ Successfully created ${stackName}`);
       } catch (error) {
