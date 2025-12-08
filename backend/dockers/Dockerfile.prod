@@ -1,0 +1,34 @@
+# ビルドステージ
+FROM golang:1.25-alpine AS builder
+
+WORKDIR /app
+
+# 依存関係ファイルのコピーとダウンロード
+COPY go.mod go.sum ./
+RUN go mod download
+
+# ソースコードのコピー
+COPY . .
+
+# アプリケーションのビルド
+# CGO_ENABLED=0: 静的リンクを使用
+# GOOS=linux: Linux向けにクロスコンパイル
+RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/api
+
+# 実行ステージ（軽量なdistrolessイメージを使用）
+FROM gcr.io/distroless/static-debian12
+
+WORKDIR /
+
+# ビルドステージからバイナリをコピー
+COPY --from=builder /app/main /main
+
+# ポートの公開
+EXPOSE 8080
+
+# 非rootユーザーで実行（セキュリティ向上）
+USER nonroot:nonroot
+
+# アプリケーションの実行
+CMD ["/main"]
+
