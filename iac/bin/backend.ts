@@ -24,7 +24,7 @@ import {
     const projectName = app.node.tryGetContext('projectName')
     const environment = getEnvironment(app);
     const rootDomain = app.node.tryGetContext('rootDomain')
-    const domainName = rootDomain
+    const domainName = rootDomain ? getBackendDomain(extractRootDomain(rootDomain), environment) : undefined;
     const containerPort = getContainerPort(app);
     const imageTag = getImageTag();
     const cpu = getCpu();
