@@ -18,9 +18,11 @@ func main() {
 
 	// ハンドラーの初期化
 	helloHandler := handlers.NewHelloHandler()
+	healthHandler := handlers.NewHealthHandler()
 
 	// ルーティング設定
 	r.GET(helloHandler.Path, helloHandler.Handle)
+	r.GET(healthHandler.Path, healthHandler.Handle)
 
 	// サーバー起動
 	addr := fmt.Sprintf(":%s", cfg.Port)
