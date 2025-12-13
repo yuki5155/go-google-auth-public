@@ -63,18 +63,6 @@ import {
           },
           tags: createDefaultTags(projectName, environment, STACK_TYPES.BACKEND, 'standard')
         });
-
-        // Fix for Go backend: Remove hardcoded FastAPI command
-        // The automation-deploy-template-iac package hardcodes the command to run 'uvicorn', which fails for Go.
-        // We use an escape hatch to remove the command override so the Dockerfile's CMD is used.
-        if (backendStack.service) {
-          const cfnTaskDef = backendStack.service.taskDefinition.node.defaultChild as cdk.aws_ecs.CfnTaskDefinition;
-          // Index 0 corresponds to the backend container (it is the only container in the main task definition)
-          // The migration container is in a separate task definition.
-          // Explicitly set the command to run the Go binary, overriding the hardcoded 'uvicorn' command.
-          cfnTaskDef.addPropertyOverride('ContainerDefinitions.0.Command', ['/main']);
-          console.log('✅ Overridden hardcoded FastAPI command with Go binary command');
-        }
     
         console.log(`✅ Successfully created ${stackName}`);
       } catch (error) {
