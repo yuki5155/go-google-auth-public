@@ -3,7 +3,6 @@ import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import {
   FrontendStack,
-  getProjectName,
   getEnvironment,
   getCostLevel,
   getCdkDefaultAccount,
@@ -16,8 +15,8 @@ import {
 
 const app = new cdk.App();
 
-// Use helper functions from the published package
-const projectName = getProjectName();
+// Get project name from CDK context (passed via --context projectName=...)
+const projectName = app.node.tryGetContext('projectName');
 const environment = getEnvironment(app);
 const costLevel = getCostLevel(app);
 const rootDomain = app.node.tryGetContext('rootDomain') || process.env.ROOT_DOMAIN;

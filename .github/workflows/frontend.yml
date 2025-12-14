@@ -94,6 +94,7 @@ jobs:
         working-directory: iac
         env:
           DEPLOY_ENV: ${{ steps.determine-env.outputs.DEPLOY_ENV }}
+          PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
         run: |
           npx cdk deploy \
             --app "npx ts-node --prefer-ts-exts bin/frontend.ts" \
