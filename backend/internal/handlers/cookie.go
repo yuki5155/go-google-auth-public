@@ -5,22 +5,28 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yuki5155/go-google-auth/internal/config"
 )
 
 // CookieHandler はCookieテスト用のハンドラー
 type CookieHandler struct {
-	Path string
+	Path   string
+	config *config.Config
 }
 
 // NewCookieHandler はCookieHandlerの新しいインスタンスを返す
-func NewCookieHandler() *CookieHandler {
+func NewCookieHandler(cfg *config.Config) *CookieHandler {
 	return &CookieHandler{
-		Path: "/api/set-cookie",
+		Path:   "/api/set-cookie",
+		config: cfg,
 	}
 }
 
 // Handle はSet-Cookieのテストを行う
 func (h *CookieHandler) Handle(c *gin.Context) {
+	// 本番環境ではSecureフラグを有効にする
+	secure := h.config.IsProduction()
+
 	// CookieをSameSite=Lax属性で設定
 	cookie := &http.Cookie{
 		Name:     "test_session",
@@ -28,7 +34,7 @@ func (h *CookieHandler) Handle(c *gin.Context) {
 		Path:     "/",
 		MaxAge:   3600, // 1 hour
 		HttpOnly: true,
-		Secure:   false, // 本番環境ではtrueに設定
+		Secure:   secure, // 本番環境（HTTPS）ではtrue
 		SameSite: http.SameSiteLaxMode,
 	}
 	http.SetCookie(c.Writer, cookie)
@@ -38,6 +44,7 @@ func (h *CookieHandler) Handle(c *gin.Context) {
 		"cookieName":  "test_session",
 		"cookieValue": "session_value_12345",
 		"sameSite":    "Lax",
+		"secure":      secure,
 		"timestamp":   time.Now().Format(time.RFC3339),
 	})
 }

@@ -441,40 +441,120 @@ docker volume inspect frontend_node_modules
 
 ### Backend Configuration
 
-Create a `.env` file in the `backend/` directory or set environment variables:
+The backend uses environment variables for configuration. You can set them in several ways:
+
+1. **Docker Compose** (recommended for local development)
+2. **`.env` file** in the `backend/` directory
+3. **System environment variables**
+4. **AWS ECS Task Definition** (for production)
+
+#### Required Environment Variables
 
 ```env
-# Application
-GO_ENV=development
-PORT=8080
+# Application Configuration
+GO_ENV=development                # Options: development, staging, production
+PORT=8080                        # Server port (default: 8080)
 
-# AWS
+# CORS Configuration
+ALLOWED_ORIGINS=http://localhost:5173,https://yourdomain.com  # Comma-separated list
+FRONTEND_URL=http://localhost:5173                            # Main frontend URL
+
+# AWS Configuration
 AWS_REGION=ap-northeast-1
-DYNAMODB_ENDPOINT=http://dynamodb:8000
-AWS_ACCESS_KEY_ID=dummy
-AWS_SECRET_ACCESS_KEY=dummy
+DYNAMODB_ENDPOINT=http://dynamodb:8000  # Local only
+AWS_ACCESS_KEY_ID=dummy                 # Local only
+AWS_SECRET_ACCESS_KEY=dummy             # Local only
 
-# Google OAuth (required for authentication)
+# Google OAuth (required for authentication features)
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 GOOGLE_REDIRECT_URL=http://localhost:8080/auth/google/callback
 ```
 
+#### Environment-Specific Configuration
+
+**Local Development:**
+```env
+ALLOWED_ORIGINS=http://localhost:5173
+FRONTEND_URL=http://localhost:5173
+```
+
+**Staging:**
+```env
+ALLOWED_ORIGINS=https://staging.yourdomain.com
+FRONTEND_URL=https://staging.yourdomain.com
+```
+
+**Production:**
+```env
+ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+FRONTEND_URL=https://yourdomain.com
+```
+
 ### Frontend Configuration
 
-Configuration in `frontend/vue-app/vite.config.ts`:
+The frontend uses Vite environment variables. Create environment files in `frontend/vue-app/`:
+
+#### `.env.development` (Local Development)
+```env
+VITE_BACKEND_URL=http://localhost:8080
+VITE_PORT=5173
+VITE_APP_ENV=development
+```
+
+#### `.env.staging` (Staging Environment)
+```env
+VITE_BACKEND_URL=https://api.staging.yourdomain.com
+VITE_APP_ENV=staging
+```
+
+#### `.env.production` (Production Environment)
+```env
+VITE_BACKEND_URL=https://api.yourdomain.com
+VITE_APP_ENV=production
+```
+
+#### Available Frontend Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `VITE_BACKEND_URL` | Backend API URL | `http://localhost:8080` |
+| `VITE_PORT` | Development server port | `5173` |
+| `VITE_APP_ENV` | Application environment | `development` |
+
+#### Using Environment Variables in Vue Components
 
 ```typescript
-export default defineConfig({
-  server: {
-    host: '0.0.0.0',
-    port: 5173,
-    watch: {
-      usePolling: true  // For Docker compatibility
-    }
-  }
-})
+// Access environment variables
+const backendUrl = import.meta.env.VITE_BACKEND_URL
+const appEnv = import.meta.env.VITE_APP_ENV
+
+console.log('Backend URL:', backendUrl)
 ```
+
+### Docker Compose Environment Variables
+
+Both `backend/compose.yml` and `frontend/compose.yml` support environment variable substitution:
+
+```bash
+# Set environment variables before starting
+export ALLOWED_ORIGINS="http://localhost:5173,http://localhost:3000"
+export VITE_BACKEND_URL="http://localhost:8080"
+
+# Start services
+cd backend && docker compose up -d
+cd frontend && docker compose up -d
+```
+
+### CI/CD Environment Variables (GitHub Actions)
+
+Configure these secrets in your GitHub repository:
+
+- `AWS_ROLE_ARN` - AWS IAM role for OIDC authentication
+- `PROJECT_NAME` - Your project name
+- `ROOT_DOMAIN` - Your root domain (e.g., `example.com`)
+- `GOOGLE_CLIENT_ID` - Google OAuth client ID
+- `GOOGLE_CLIENT_SECRET` - Google OAuth client secret
 
 ## 🐛 Troubleshooting
 

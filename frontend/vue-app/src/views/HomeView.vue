@@ -7,7 +7,9 @@ interface CookieTestResult {
   timestamp: string
 }
 
-const backendUrl = ref('http://localhost:8080')
+// 環境変数からバックエンドURLを取得（デフォルトはlocalhost）
+const defaultBackendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080'
+const backendUrl = ref(defaultBackendUrl)
 const setCookieResponse = ref('')
 const cookieTestResult = ref<CookieTestResult | null>(null)
 const currentCookies = ref('')
@@ -17,6 +19,7 @@ const errorMessage = ref('')
 // ページロード時に現在のCookieを取得
 onMounted(() => {
   updateCurrentCookies()
+  console.log('Backend URL:', backendUrl.value)
 })
 
 // 現在のCookieを更新
