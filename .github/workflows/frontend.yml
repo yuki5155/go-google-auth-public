@@ -108,20 +108,26 @@ jobs:
       - name: Get CloudFront Distribution ID
         id: get-distribution
         run: |
-          STACK_NAME="${{ secrets.PROJECT_NAME }}-${{ steps.determine-env.outputs.DEPLOY_ENV }}-frontend"
+          STACK_NAME="${{ secrets.PROJECT_NAME }}-${{ steps.determine-env.outputs.DEPLOY_ENV }}-FrontendStack"
+          echo "Getting outputs from stack: $STACK_NAME"
+          
           DISTRIBUTION_ID=$(aws cloudformation describe-stacks \
             --stack-name $STACK_NAME \
-            --query 'Stacks[0].Outputs[?OutputKey==`CloudFrontDistributionId`].OutputValue' \
+            --query 'Stacks[0].Outputs[?OutputKey==`DistributionId`].OutputValue' \
             --output text)
           echo "DISTRIBUTION_ID=$DISTRIBUTION_ID" >> $GITHUB_OUTPUT
 
       - name: Upload to S3
         run: |
-          STACK_NAME="${{ secrets.PROJECT_NAME }}-${{ steps.determine-env.outputs.DEPLOY_ENV }}-frontend"
+          STACK_NAME="${{ secrets.PROJECT_NAME }}-${{ steps.determine-env.outputs.DEPLOY_ENV }}-FrontendStack"
+          echo "Getting bucket name from stack: $STACK_NAME"
+          
           BUCKET_NAME=$(aws cloudformation describe-stacks \
             --stack-name $STACK_NAME \
             --query 'Stacks[0].Outputs[?OutputKey==`BucketName`].OutputValue' \
             --output text)
+          
+          echo "Uploading to S3 bucket: $BUCKET_NAME"
           
           aws s3 sync frontend/vue-app/dist s3://$BUCKET_NAME \
             --delete \
@@ -133,6 +139,8 @@ jobs:
           aws s3 cp frontend/vue-app/dist/index.html s3://$BUCKET_NAME/index.html \
             --cache-control "no-cache, no-store, must-revalidate" \
             --content-type "text/html"
+          
+          echo "Upload complete!"
 
       - name: Invalidate CloudFront Cache
         if: steps.get-distribution.outputs.DISTRIBUTION_ID != ''
