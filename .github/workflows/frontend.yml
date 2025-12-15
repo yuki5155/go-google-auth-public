@@ -70,9 +70,9 @@ jobs:
           if [ "$ENV" == "prod" ]; then
             echo "BACKEND_URL=https://api.${{ secrets.ROOT_DOMAIN }}" >> $GITHUB_OUTPUT
           elif [ "$ENV" == "staging" ]; then
-            echo "BACKEND_URL=https://api.staging.${{ secrets.ROOT_DOMAIN }}" >> $GITHUB_OUTPUT
+            echo "BACKEND_URL=https://stagingapi.${{ secrets.ROOT_DOMAIN }}" >> $GITHUB_OUTPUT
           else
-            echo "BACKEND_URL=https://api.dev.${{ secrets.ROOT_DOMAIN }}" >> $GITHUB_OUTPUT
+            echo "BACKEND_URL=https://devapi.${{ secrets.ROOT_DOMAIN }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Install frontend dependencies
