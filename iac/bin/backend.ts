@@ -15,8 +15,10 @@ import {
   createDefaultTags,
   CloudformationSdkUtils,
   RdsRequests,
+  ContainerConfigRequests,
   extractRootDomain,
-  getBackendDomain
+  getBackendDomain,
+  getFrontendDomain
 } from 'automation-deploy-template-iac';
 
 (async () => {
@@ -43,6 +45,22 @@ import {
         databaseStack.getOutputByKey('ClusterArn')
     ) : undefined;
 
+    // Setup environment variables for CORS
+    const frontendDomain = rootDomain ? getFrontendDomain(extractRootDomain(rootDomain), environment) : undefined;
+    const frontendUrl = frontendDomain ? `https://${frontendDomain}` : 'http://localhost:5173';
+    
+    console.log('=== Backend Environment Configuration ===');
+    console.log(`Frontend URL: ${frontendUrl}`);
+    console.log(`Backend Domain: ${domainName || 'Not specified'}`);
+    console.log(`Environment: ${environment}`);
+    
+    const containerConfigRequests = ContainerConfigRequests.build({
+      ALLOWED_ORIGINS: frontendUrl,
+      FRONTEND_URL: frontendUrl,
+      GO_ENV: environment === 'prod' ? 'production' : 'development',
+      PORT: containerPort.toString()
+    });
+
     try {
         // Create Backend Stack using the published npm package
         const backendStack = new BackendStack(app, stackName, {
@@ -52,6 +70,7 @@ import {
           databaseStackName,
           isDatabaseStackDeployed,
           rdsRequests,
+          containerConfigRequests,
           containerPort,
           imageTag,
           cpu,
