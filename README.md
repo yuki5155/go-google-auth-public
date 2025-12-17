@@ -29,12 +29,16 @@ This project demonstrates a modern full-stack application architecture with:
 - **Backend**: Go-based REST API using Gin framework
 - **Frontend**: Vue.js 3 with TypeScript and Vite
 - **Database**: DynamoDB (AWS DynamoDB Local for development)
-- **Authentication**: Google OAuth 2.0 (planned)
-- **Session Management**: Cookie-based session handling with testing interface
+- **Authentication**: Google Identity Services (GIS) with JWT tokens
+- **Session Management**: Secure HttpOnly cookie-based JWT sessions
 
 ## ✨ Features
 
 ### Current Features
+- ✅ **Google Identity Services (GIS) authentication**
+- ✅ **JWT-based session management** (access + refresh tokens)
+- ✅ **Protected routes and authorization**
+- ✅ **Secure HttpOnly cookies**
 - ✅ Cookie/Session testing interface
 - ✅ Set-Cookie header validation
 - ✅ Cookie transmission verification
@@ -44,9 +48,6 @@ This project demonstrates a modern full-stack application architecture with:
 - ✅ Hot reload for both frontend and backend
 
 ### Planned Features
-- 🚧 Google OAuth 2.0 authentication
-- 🚧 User session management
-- 🚧 Protected routes and authorization
 - 🚧 AWS deployment with CDK
 
 ## 🛠 Technology Stack
@@ -87,15 +88,21 @@ go-google-auth/
 │   │       └── main.go        # Application entry point
 │   ├── internal/
 │   │   ├── config/            # Configuration management
-│   │   └── handlers/          # HTTP request handlers
-│   │       ├── cookie.go      # Cookie management handlers
-│   │       ├── health.go      # Health check endpoints
-│   │       └── hello.go       # Example endpoints
+│   │   ├── handlers/          # HTTP request handlers
+│   │   │   ├── auth.go        # Google OAuth & JWT handlers
+│   │   │   ├── cookie.go      # Cookie management handlers
+│   │   │   ├── health.go      # Health check endpoints
+│   │   │   └── hello.go       # Example endpoints
+│   │   ├── middleware/        # HTTP middleware
+│   │   │   └── auth.go        # JWT authentication middleware
+│   │   └── services/          # Business logic services
+│   │       └── jwt.go         # JWT token generation/validation
 │   ├── dockers/
 │   │   ├── Dockerfile.local   # Development Docker image
 │   │   └── Dockerfile.prod    # Production Docker image
 │   ├── compose.yml            # Backend Docker Compose config
 │   ├── .air.toml             # Air hot reload configuration
+│   ├── .env.example          # Environment variables template
 │   ├── go.mod                # Go module definition
 │   └── Makefile              # Backend build commands
 │
@@ -104,11 +111,15 @@ go-google-auth/
 │   │   ├── src/
 │   │   │   ├── components/   # Reusable Vue components
 │   │   │   │   └── AppHeader.vue
+│   │   │   ├── composables/  # Vue composition functions
+│   │   │   │   └── useAuth.ts    # Authentication state management
 │   │   │   ├── views/        # Page-level components
 │   │   │   │   ├── HomeView.vue      # Cookie testing page
+│   │   │   │   ├── LoginView.vue     # Google Sign-In page
+│   │   │   │   ├── DashboardView.vue # Protected user dashboard
 │   │   │   │   └── AboutView.vue     # About page
 │   │   │   ├── router/       # Vue Router configuration
-│   │   │   │   └── index.ts
+│   │   │   │   └── index.ts  # Routes with auth guards
 │   │   │   ├── assets/       # Static assets
 │   │   │   │   ├── main.css
 │   │   │   │   └── styles/   # Organized CSS
@@ -118,7 +129,8 @@ go-google-auth/
 │   │   │   │       ├── pages/
 │   │   │   │       └── utilities/
 │   │   │   └── main.ts       # Application entry point
-│   │   ├── index.html
+│   │   ├── index.html        # HTML template (includes GIS script)
+│   │   ├── .env.example      # Environment variables template
 │   │   ├── vite.config.ts
 │   │   ├── tsconfig.json
 │   │   └── package.json
@@ -169,7 +181,22 @@ Optional (for local development without Docker):
    cd go-google-auth
    ```
 
-2. **Start all services using Docker Compose**
+2. **Set up Google OAuth credentials** (see [Google OAuth Setup](#google-oauth-setup) below)
+
+3. **Configure environment variables**
+   ```bash
+   # Backend
+   cd backend
+   make env  # Creates .env from .env.example (requires Docker)
+   # Edit .env with your Google credentials
+   
+   # Frontend
+   cd ../frontend/vue-app
+   cp .env.example .env.development
+   # Edit .env.development with your Google Client ID
+   ```
+
+4. **Start all services using Docker Compose**
    ```bash
    # Start backend
    cd backend && docker compose up -d
@@ -178,7 +205,7 @@ Optional (for local development without Docker):
    cd frontend && docker compose up -d
    ```
 
-3. **Verify services are running**
+5. **Verify services are running**
    ```bash
    docker ps | grep go-google-auth
    ```
@@ -188,10 +215,66 @@ Optional (for local development without Docker):
    - `go-google-auth-app` (Port 8080)
    - `go-google-auth-dynamodb` (Port 8000)
 
-4. **Access the application**
+6. **Access the application**
    - Frontend: http://localhost:5173
    - Backend API: http://localhost:8080
    - DynamoDB Local: http://localhost:8000
+
+### Google OAuth Setup
+
+To enable Google Sign-In, you need to create OAuth 2.0 credentials in Google Cloud Console:
+
+1. **Go to Google Cloud Console**
+   - Visit https://console.cloud.google.com/apis/credentials
+
+2. **Create a new project** (or select an existing one)
+
+3. **Configure OAuth consent screen**
+   - Go to "OAuth consent screen"
+   - Select "External" user type
+   - Fill in the required fields (App name, User support email, Developer contact)
+   - Add scopes: `email`, `profile`, `openid`
+   - Save and continue
+
+4. **Create OAuth 2.0 Client ID**
+   - Go to "Credentials" → "Create Credentials" → "OAuth client ID"
+   - Application type: **Web application**
+   - Name: `Web client 1` (or any name)
+   - **Authorized JavaScript origins:**
+     ```
+     http://localhost:5173
+     http://localhost:8080
+     ```
+   - **Authorized redirect URIs:**
+     ```
+     http://localhost:8080/auth/google/callback
+     ```
+   - Click "Create"
+
+5. **Copy your credentials**
+   - Copy the **Client ID** (ends with `.apps.googleusercontent.com`)
+   - Copy the **Client Secret**
+
+6. **Update environment files**
+
+   **Backend `.env`:**
+   ```env
+   GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=your-client-secret
+   JWT_SECRET=your-random-secret-key  # Generate with: openssl rand -base64 32
+   ```
+
+   **Frontend `.env.development`:**
+   ```env
+   VITE_BACKEND_URL=http://localhost:8080
+   VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+   ```
+
+7. **Restart containers**
+   ```bash
+   cd backend && docker compose down && docker compose up -d
+   cd ../frontend && docker compose down && docker compose up -d
+   ```
 
 ## 💡 Usage
 
@@ -279,12 +362,79 @@ Verifies if cookies are received from the client.
 }
 ```
 
-### Future Endpoints (Planned)
+### Authentication Endpoints
 
-- `GET /auth/google` - Initiate Google OAuth flow
-- `GET /auth/google/callback` - OAuth callback handler
-- `GET /auth/logout` - User logout
-- `GET /api/user` - Get authenticated user info
+#### `POST /auth/google`
+Authenticates user with Google ID token and creates JWT session.
+
+**Request Body:**
+```json
+{
+  "credential": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Login successful",
+  "user": {
+    "id": "123456789",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "picture": "https://lh3.googleusercontent.com/..."
+  }
+}
+```
+
+**Cookies Set:**
+- `access_token` - JWT access token (15 min expiry, HttpOnly)
+- `refresh_token` - JWT refresh token (7 days expiry, HttpOnly)
+
+#### `POST /auth/refresh`
+Refreshes the access token using the refresh token cookie.
+
+**Response:**
+```json
+{
+  "message": "Token refreshed successfully"
+}
+```
+
+#### `POST /auth/logout`
+Logs out the user by clearing authentication cookies.
+
+**Response:**
+```json
+{
+  "message": "Logged out successfully"
+}
+```
+
+#### `GET /api/me` (Protected)
+Returns the current authenticated user's information.
+
+**Required:** Valid `access_token` cookie
+
+**Response:**
+```json
+{
+  "user": {
+    "id": "123456789",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "picture": "https://lh3.googleusercontent.com/..."
+  }
+}
+```
+
+**Error Response (401):**
+```json
+{
+  "error": "unauthorized",
+  "message": "Access token not found"
+}
+```
 
 ## 🔧 Development
 
@@ -441,12 +591,12 @@ docker volume inspect frontend_node_modules
 
 ### Backend Configuration
 
-The backend uses environment variables for configuration. You can set them in several ways:
+The backend uses environment variables for configuration:
 
-1. **Docker Compose** (recommended for local development)
-2. **`.env` file** in the `backend/` directory
-3. **System environment variables**
-4. **AWS ECS Task Definition** (for production)
+- **Local Development**: `.env` file in `backend/` directory
+- **Staging/Production**: AWS ECS Task Definition, Kubernetes Secrets, or CI/CD pipeline
+
+> ⚠️ **Note:** `.env` files are for **local development only**. Never commit `.env` files to version control.
 
 #### Required Environment Variables
 
@@ -466,52 +616,62 @@ AWS_ACCESS_KEY_ID=dummy                 # Local only
 AWS_SECRET_ACCESS_KEY=dummy             # Local only
 
 # Google OAuth (required for authentication features)
-GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your_google_client_secret
-GOOGLE_REDIRECT_URL=http://localhost:8080/auth/google/callback
+
+# JWT Configuration
+JWT_SECRET=your-secret-key        # Generate with: openssl rand -base64 32
 ```
 
 #### Environment-Specific Configuration
 
-**Local Development:**
+**Local Development (`.env` file):**
 ```env
 ALLOWED_ORIGINS=http://localhost:5173
 FRONTEND_URL=http://localhost:5173
 ```
 
-**Staging:**
-```env
-ALLOWED_ORIGINS=https://staging.yourdomain.com
-FRONTEND_URL=https://staging.yourdomain.com
-```
-
-**Production:**
-```env
+**Staging/Production (AWS ECS, Kubernetes, etc.):**
+```bash
+# Set via Task Definition, ConfigMap, or CI/CD secrets
 ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
 FRONTEND_URL=https://yourdomain.com
+JWT_SECRET=<generated-secure-secret>
+GOOGLE_CLIENT_ID=<your-production-client-id>
+GOOGLE_CLIENT_SECRET=<your-production-client-secret>
 ```
 
 ### Frontend Configuration
 
-The frontend uses Vite environment variables. Create environment files in `frontend/vue-app/`:
+The frontend uses Vite environment variables:
 
-#### `.env.development` (Local Development)
+- **Local Development**: `.env.development` file in `frontend/vue-app/`
+- **Staging/Production**: Build-time environment variables via CI/CD pipeline
+
+> ⚠️ **Note:** `.env.*` files are for **local development only**. For production builds, set environment variables in your CI/CD pipeline.
+
+#### `.env.development` (Local Development Only)
 ```env
 VITE_BACKEND_URL=http://localhost:8080
 VITE_PORT=5173
 VITE_APP_ENV=development
+VITE_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
 ```
 
-#### `.env.staging` (Staging Environment)
-```env
+#### Staging/Production (CI/CD Environment Variables)
+
+Set these in your CI/CD pipeline (GitHub Actions, etc.):
+
+```bash
+# Staging
 VITE_BACKEND_URL=https://api.staging.yourdomain.com
 VITE_APP_ENV=staging
-```
+VITE_GOOGLE_CLIENT_ID=your-staging-client-id.apps.googleusercontent.com
 
-#### `.env.production` (Production Environment)
-```env
+# Production
 VITE_BACKEND_URL=https://api.yourdomain.com
 VITE_APP_ENV=production
+VITE_GOOGLE_CLIENT_ID=your-production-client-id.apps.googleusercontent.com
 ```
 
 #### Available Frontend Environment Variables
@@ -521,6 +681,7 @@ VITE_APP_ENV=production
 | `VITE_BACKEND_URL` | Backend API URL | `http://localhost:8080` |
 | `VITE_PORT` | Development server port | `5173` |
 | `VITE_APP_ENV` | Application environment | `development` |
+| `VITE_GOOGLE_CLIENT_ID` | Google OAuth Client ID | (required) |
 
 #### Using Environment Variables in Vue Components
 
@@ -674,7 +835,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📊 Project Status
 
-This project is currently in active development. Core features are functional, with Google OAuth integration planned for the next release.
+This project is fully functional with Google Identity Services (GIS) authentication implemented. The authentication flow includes:
+
+- ✅ Google Sign-In with GIS library
+- ✅ JWT-based session management (access + refresh tokens)
+- ✅ Secure HttpOnly cookie storage
+- ✅ Automatic token refresh
+- ✅ Protected routes with authentication guards
+- ✅ User dashboard with profile information
 
 ---
 

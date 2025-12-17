@@ -8,6 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yuki5155/go-google-auth/internal/config"
 	"github.com/yuki5155/go-google-auth/internal/handlers"
+	"github.com/yuki5155/go-google-auth/internal/middleware"
+	"github.com/yuki5155/go-google-auth/internal/services"
 )
 
 func main() {
@@ -54,13 +56,17 @@ func main() {
 		c.Next()
 	})
 
-	// ハンドラーの初期化（configを渡す）
+	// サービスの初期化
+	jwtService := services.NewJWTService(cfg.JWTSecret)
+
+	// ハンドラーの初期化
 	helloHandler := handlers.NewHelloHandler()
 	healthHandler := handlers.NewHealthHandler()
 	setCookieHandler := handlers.NewCookieHandler(cfg)
 	checkCookieHandler := handlers.NewCheckCookieHandler()
+	authHandler := handlers.NewAuthHandler(cfg, jwtService)
 
-	// ルーティング設定
+	// 公開ルーティング設定
 	r.GET(helloHandler.Path, helloHandler.Handle)
 	r.GET(healthHandler.Path, healthHandler.Handle)
 	r.GET("/health/ready", healthHandler.Handle)
@@ -69,10 +75,23 @@ func main() {
 	r.GET(setCookieHandler.Path, setCookieHandler.Handle)
 	r.GET(checkCookieHandler.Path, checkCookieHandler.Handle)
 
+	// Auth endpoints (public)
+	r.POST("/auth/google", authHandler.GoogleLogin)
+	r.POST("/auth/refresh", authHandler.RefreshToken)
+	r.POST("/auth/logout", authHandler.Logout)
+
+	// Protected routes (require authentication)
+	protected := r.Group("/api")
+	protected.Use(middleware.AuthMiddleware(jwtService))
+	{
+		protected.GET("/me", authHandler.GetCurrentUser)
+	}
+
 	// サーバー起動
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	log.Printf("Starting server on %s (environment: %s)", addr, cfg.Environment)
 	log.Printf("Allowed CORS origins: %s", strings.Join(cfg.AllowedOrigins, ", "))
+	log.Printf("Google Client ID configured: %v", cfg.GoogleClientID != "")
 	if err := r.Run(addr); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}

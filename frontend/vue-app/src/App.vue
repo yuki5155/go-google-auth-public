@@ -1,5 +1,14 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import AppHeader from './components/AppHeader.vue'
+import { useAuth } from '@/composables/useAuth'
+
+const { initAuth } = useAuth()
+
+// Initialize authentication state on app mount
+onMounted(async () => {
+  await initAuth()
+})
 </script>
 
 <template>
