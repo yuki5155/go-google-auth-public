@@ -631,15 +631,54 @@ ALLOWED_ORIGINS=http://localhost:5173
 FRONTEND_URL=http://localhost:5173
 ```
 
-**Staging/Production (AWS ECS, Kubernetes, etc.):**
+**Staging/Production (AWS Secrets Manager):**
+
+Secrets are stored in AWS Secrets Manager and automatically injected into ECS containers.
+
+#### Option 1: Deploy Secrets Stack (Recommended)
+
+The project includes a CDK secrets stack that creates the secret with default placeholder values:
+
 ```bash
-# Set via Task Definition, ConfigMap, or CI/CD secrets
-ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
-FRONTEND_URL=https://yourdomain.com
-JWT_SECRET=<generated-secure-secret>
-GOOGLE_CLIENT_ID=<your-production-client-id>
-GOOGLE_CLIENT_SECRET=<your-production-client-secret>
+cd iac
+
+# Deploy secrets stack (creates secret with placeholder values)
+npx cdk deploy --app "npx ts-node --prefer-ts-exts bin/secrets.ts" \
+  --context projectName=go-google-auth \
+  --context environment=dev
+
+# After deployment, update with your actual credentials
+aws secretsmanager put-secret-value \
+  --secret-id "go-google-auth/dev/google-auth" \
+  --secret-string '{
+    "GOOGLE_CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+    "GOOGLE_CLIENT_SECRET": "your-client-secret",
+    "JWT_SECRET": "your-jwt-secret"
+  }'
 ```
+
+#### Option 2: Create Secret Manually
+
+```bash
+# Create secret manually
+aws secretsmanager create-secret \
+  --name "go-google-auth/dev/google-auth" \
+  --secret-string '{
+    "GOOGLE_CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+    "GOOGLE_CLIENT_SECRET": "your-client-secret",
+    "JWT_SECRET": "your-jwt-secret-generated-with-openssl"
+  }'
+```
+
+#### Secret Structure
+
+| Key | Description |
+|-----|-------------|
+| `GOOGLE_CLIENT_ID` | Google OAuth Client ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret |
+| `JWT_SECRET` | Secret key for JWT token signing |
+
+> 💡 **Note:** The backend CDK stack automatically references secrets from `{projectName}/{environment}/google-auth`
 
 ### Frontend Configuration
 
@@ -714,8 +753,8 @@ Configure these secrets in your GitHub repository:
 - `AWS_ROLE_ARN` - AWS IAM role for OIDC authentication
 - `PROJECT_NAME` - Your project name
 - `ROOT_DOMAIN` - Your root domain (e.g., `example.com`)
-- `GOOGLE_CLIENT_ID` - Google OAuth client ID
-- `GOOGLE_CLIENT_SECRET` - Google OAuth client secret
+
+> 💡 **Note:** Google OAuth credentials and JWT secret are stored in **AWS Secrets Manager**, not in GitHub secrets. The ECS task automatically retrieves them at runtime.
 
 ## 🐛 Troubleshooting
 
