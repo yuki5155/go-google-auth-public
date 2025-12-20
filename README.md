@@ -17,6 +17,7 @@ A full-stack web application for Google OAuth authentication with comprehensive 
 - [Usage](#usage)
 - [API Documentation](#api-documentation)
 - [Development](#development)
+- [AWS Deployment](#aws-deployment)
 - [Docker Commands](#docker-commands)
 - [Environment Variables](#environment-variables)
 - [Troubleshooting](#troubleshooting)
@@ -48,7 +49,7 @@ This project demonstrates a modern full-stack application architecture with:
 - ✅ Hot reload for both frontend and backend
 
 ### Planned Features
-- 🚧 AWS deployment with CDK
+- ✅ AWS deployment with CDK (Network, Backend, Frontend, Secrets stacks)
 
 ## 🛠 Technology Stack
 
@@ -526,6 +527,87 @@ const increment = () => {
 <style scoped>
 /* Component-specific styles */
 </style>
+```
+
+## ☁️ AWS Deployment
+
+### Prerequisites
+
+1. AWS CLI configured with appropriate credentials
+2. AWS CDK bootstrapped in your account
+3. GitHub Actions OIDC provider configured
+
+### Initial Setup
+
+#### 1. Configure GitHub Actions IAM Role
+
+```bash
+cd iac
+
+# Update CloudFormation template with your GitHub org/repo from git remote
+make update-cf-defaults
+
+# Or run init-cf to also see deployment instructions
+make init-cf
+```
+
+#### 2. Deploy GitHub Actions IAM Role
+
+```bash
+aws cloudformation create-stack \
+  --stack-name go-google-auth-github-actions \
+  --template-body file://iac/cloudformations/github-actions-role.yaml \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameters \
+    ParameterKey=RoleName,ParameterValue=GoGoogleAuthGitHubActionsRole
+```
+
+#### 3. Configure GitHub Repository Secrets
+
+Add these secrets in GitHub repository settings (Settings → Secrets and variables → Actions):
+
+| Secret | Description |
+|--------|-------------|
+| `AWS_ROLE_TO_ASSUME` | IAM Role ARN from CloudFormation output |
+| `AWS_REGION` | AWS Region (e.g., `ap-northeast-1`) |
+| `PROJECT_NAME` | Project name (e.g., `go-google-auth`) |
+| `ROOT_DOMAIN` | Your domain (e.g., `example.com`) |
+
+### Deployment Order
+
+Deploy stacks in this order:
+
+```bash
+# 1. Network Stack
+# GitHub Actions: Run "Network Stack" workflow
+
+# 2. Secrets Stack (creates placeholder secrets)
+# GitHub Actions: Run "Secrets Stack" workflow
+
+# 3. Update secret values in AWS Secrets Manager
+aws secretsmanager put-secret-value \
+  --secret-id "go-google-auth/dev/google-auth" \
+  --secret-string '{
+    "GOOGLE_CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+    "GOOGLE_CLIENT_SECRET": "your-client-secret",
+    "JWT_SECRET": "your-jwt-secret"
+  }'
+
+# 4. Backend Stack
+# GitHub Actions: Run "Backend Stack" workflow
+
+# 5. Frontend Stack
+# GitHub Actions: Run "Deploy Frontend" workflow
+```
+
+### IAC Makefile Commands
+
+```bash
+cd iac
+
+make update-cf-defaults  # Update CloudFormation defaults from git remote
+make init-cf             # Update defaults + show deployment instructions
+make help                # Show available commands
 ```
 
 ## 🐳 Docker Commands
