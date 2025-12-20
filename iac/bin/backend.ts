@@ -16,6 +16,7 @@ import {
   CloudformationSdkUtils,
   RdsRequests,
   ContainerConfigRequests,
+  CustomSecretsRequests,
   extractRootDomain,
   getBackendDomain,
   getFrontendDomain
@@ -51,19 +52,42 @@ import {
     
     // Cloud environments (dev/staging/prod) use HTTPS, so always use production mode for Secure cookies
     const goEnv = domainName ? 'production' : 'development';
+
+    // Secrets Manager configuration for Google OAuth and JWT secrets
+    // Secret should be created manually in AWS Secrets Manager with the following structure:
+    // {
+    //   "GOOGLE_CLIENT_ID": "your-client-id.apps.googleusercontent.com",
+    //   "GOOGLE_CLIENT_SECRET": "your-client-secret",
+    //   "JWT_SECRET": "your-jwt-secret"
+    // }
+    const secretName = `${projectName}/${environment}/google-auth`;
     
     console.log('=== Backend Environment Configuration ===');
     console.log(`Frontend URL: ${frontendUrl}`);
     console.log(`Backend Domain: ${domainName || 'Not specified'}`);
     console.log(`Environment: ${environment}`);
     console.log(`GO_ENV: ${goEnv} (${domainName ? 'HTTPS/Secure cookies enabled' : 'HTTP/Secure cookies disabled'})`);
+    console.log(`Secrets Manager: ${secretName}`);
     
-    const containerConfigRequests = ContainerConfigRequests.build({
-      ALLOWED_ORIGINS: frontendUrl,
-      FRONTEND_URL: frontendUrl,
-      GO_ENV: goEnv,
-      PORT: containerPort.toString()
-    });
+    // Build custom secrets from AWS Secrets Manager
+    const customSecretsRequests = CustomSecretsRequests.buildFromName(
+      secretName,
+      [
+        { envVarName: 'GOOGLE_CLIENT_ID', secretKey: 'GOOGLE_CLIENT_ID' },
+        { envVarName: 'GOOGLE_CLIENT_SECRET', secretKey: 'GOOGLE_CLIENT_SECRET' },
+        { envVarName: 'JWT_SECRET', secretKey: 'JWT_SECRET' }
+      ]
+    );
+
+    const containerConfigRequests = ContainerConfigRequests.build(
+      {
+        ALLOWED_ORIGINS: frontendUrl,
+        FRONTEND_URL: frontendUrl,
+        GO_ENV: goEnv,
+        PORT: containerPort.toString()
+      },
+      customSecretsRequests
+    );
 
     try {
         // Create Backend Stack using the published npm package
