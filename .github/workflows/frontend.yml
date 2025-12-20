@@ -75,6 +75,25 @@ jobs:
             echo "BACKEND_URL=https://devapi.${{ secrets.ROOT_DOMAIN }}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Get Google Client ID from Secrets Manager
+        id: get-google-client-id
+        run: |
+          SECRET_NAME="${{ secrets.PROJECT_NAME }}/${{ steps.determine-env.outputs.DEPLOY_ENV }}/google-auth"
+          echo "Fetching GOOGLE_CLIENT_ID from secret: $SECRET_NAME"
+          
+          GOOGLE_CLIENT_ID=$(aws secretsmanager get-secret-value \
+            --secret-id "$SECRET_NAME" \
+            --query 'SecretString' \
+            --output text | jq -r '.GOOGLE_CLIENT_ID')
+          
+          if [ -z "$GOOGLE_CLIENT_ID" ] || [ "$GOOGLE_CLIENT_ID" == "null" ]; then
+            echo "❌ Error: GOOGLE_CLIENT_ID not found in secret"
+            exit 1
+          fi
+          
+          echo "✅ GOOGLE_CLIENT_ID retrieved successfully"
+          echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" >> $GITHUB_OUTPUT
+
       - name: Install frontend dependencies
         working-directory: frontend/vue-app
         run: npm ci
@@ -84,6 +103,7 @@ jobs:
         env:
           VITE_BACKEND_URL: ${{ steps.set-backend-url.outputs.BACKEND_URL }}
           VITE_APP_ENV: ${{ steps.determine-env.outputs.DEPLOY_ENV }}
+          VITE_GOOGLE_CLIENT_ID: ${{ steps.get-google-client-id.outputs.GOOGLE_CLIENT_ID }}
         run: npm run build
 
       - name: Install CDK dependencies
