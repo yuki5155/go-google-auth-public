@@ -130,7 +130,7 @@ jobs:
           VITE_BACKEND_URL: ${{ steps.set-backend-url.outputs.BACKEND_URL }}
           VITE_APP_ENV: ${{ steps.determine-env.outputs.DEPLOY_ENV }}
           VITE_GOOGLE_CLIENT_ID: ${{ steps.get-google-client-id.outputs.GOOGLE_CLIENT_ID }}
-        run: npm run build
+        run: npm run build-only
 
       - name: Install CDK dependencies
         working-directory: iac
