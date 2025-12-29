@@ -51,8 +51,8 @@ interface LambdaConfig {
     ? `${subdomain}.${domain}`
     : `${subdomain}.${environment}.${domain}`;
 
-  const memory = app.node.tryGetContext('memory') || 512;
-  const timeout = app.node.tryGetContext('timeout') || 30;
+  const memory = parseInt(app.node.tryGetContext('memory') || '512', 10);
+  const timeout = parseInt(app.node.tryGetContext('timeout') || '30', 10);
   const stackName = `${projectName}-${environment}-lambda`;
 
   // Path to Lambda build directory (ZIP files)
