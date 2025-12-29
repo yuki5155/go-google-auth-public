@@ -5,7 +5,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/awslabs/aws-lambda-go-api-proxy/gin"
+	ginadapter "github.com/awslabs/aws-lambda-go-api-proxy/gin"
 	ginpkg "github.com/gin-gonic/gin"
 	"github.com/yuki5155/go-google-auth/internal/config"
 	"github.com/yuki5155/go-google-auth/internal/handlers"
@@ -21,7 +21,7 @@ func init() {
 	}
 
 	r := ginpkg.Default()
-	
+
 	// Add CORS middleware
 	r.Use(func(c *ginpkg.Context) {
 		origin := c.Request.Header.Get("Origin")
