@@ -43,6 +43,8 @@ export default defineConfig(({ mode }) => {
     // Expose env variables to the client
     define: {
       __APP_ENV__: JSON.stringify(env.APP_ENV),
+      'import.meta.env.VITE_BACKEND_URL': JSON.stringify(env.VITE_BACKEND_URL),
+      'import.meta.env.VITE_GOOGLE_CLIENT_ID': JSON.stringify(env.VITE_GOOGLE_CLIENT_ID),
     },
   }
 })

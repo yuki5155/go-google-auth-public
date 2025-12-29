@@ -14,7 +14,11 @@ const isLoading = ref(false)
 const error = ref<string | null>(null)
 
 // Backend URL from environment
-const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080'
+const backendUrl = import.meta.env.VITE_BACKEND_URL
+if (!backendUrl) {
+  console.warn('VITE_BACKEND_URL is not set! Falling back to localhost:8080 for development.')
+}
+const finalBackendUrl = backendUrl || 'http://localhost:8080'
 
 // Computed properties
 const isAuthenticated = computed(() => user.value !== null)
@@ -24,8 +28,10 @@ async function initAuth(): Promise<void> {
   isLoading.value = true
   error.value = null
 
+  console.log('Initializing auth with backend:', finalBackendUrl)
+
   try {
-    const response = await fetch(`${backendUrl}/api/me`, {
+    const response = await fetch(`${finalBackendUrl}/api/me`, {
       method: 'GET',
       credentials: 'include',
     })
@@ -38,7 +44,7 @@ async function initAuth(): Promise<void> {
       const refreshed = await refreshToken()
       if (refreshed) {
         // Retry fetching user info
-        const retryResponse = await fetch(`${backendUrl}/api/me`, {
+        const retryResponse = await fetch(`${finalBackendUrl}/api/me`, {
           method: 'GET',
           credentials: 'include',
         })
@@ -47,9 +53,13 @@ async function initAuth(): Promise<void> {
           user.value = data.user
         }
       }
+    } else {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('Auth initialization failed:', response.status, errorData)
     }
   } catch (err) {
     console.error('Failed to initialize auth:', err)
+    error.value = err instanceof Error ? `Connection Error: ${err.message}` : 'Failed to connect to backend'
     user.value = null
   } finally {
     isLoading.value = false
@@ -62,7 +72,7 @@ async function loginWithGoogle(credential: string): Promise<boolean> {
   error.value = null
 
   try {
-    const response = await fetch(`${backendUrl}/auth/google`, {
+    const response = await fetch(`${finalBackendUrl}/auth/google`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -92,7 +102,7 @@ async function loginWithGoogle(credential: string): Promise<boolean> {
 // Refresh the access token
 async function refreshToken(): Promise<boolean> {
   try {
-    const response = await fetch(`${backendUrl}/auth/refresh`, {
+    const response = await fetch(`${finalBackendUrl}/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
     })
@@ -109,7 +119,7 @@ async function logout(): Promise<void> {
   isLoading.value = true
 
   try {
-    await fetch(`${backendUrl}/auth/logout`, {
+    await fetch(`${finalBackendUrl}/auth/logout`, {
       method: 'POST',
       credentials: 'include',
     })

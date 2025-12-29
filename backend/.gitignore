@@ -38,3 +38,6 @@ build-errors.log
 coverage.txt
 *.cover
 
+# Build artifacts
+build/
+

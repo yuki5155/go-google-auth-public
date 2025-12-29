@@ -272,6 +272,12 @@ Resources:
                   - 'secretsmanager:ListSecrets'
                 Resource: '*'
 
+              # Cost Explorer 権限 (Billing Report用)
+              - Effect: Allow
+                Action:
+                  - 'ce:GetCostAndUsage'
+                Resource: '*'
+
 Outputs:
   RoleArn:
     Description: 'GitHub Actions用IAMロールのARN'

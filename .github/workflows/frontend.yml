@@ -20,6 +20,14 @@ on:
           - dev
           - staging
           - prod
+      backendType:
+        description: 'Backend type (ECS or Lambda)'
+        required: true
+        default: 'lambda'
+        type: choice
+        options:
+          - ecs
+          - lambda
 
 env:
   AWS_REGION: ap-northeast-1
@@ -67,13 +75,31 @@ jobs:
         id: set-backend-url
         run: |
           ENV=${{ steps.determine-env.outputs.DEPLOY_ENV }}
-          if [ "$ENV" == "prod" ]; then
-            echo "BACKEND_URL=https://api.${{ secrets.ROOT_DOMAIN }}" >> $GITHUB_OUTPUT
-          elif [ "$ENV" == "staging" ]; then
-            echo "BACKEND_URL=https://stagingapi.${{ secrets.ROOT_DOMAIN }}" >> $GITHUB_OUTPUT
+          BACKEND_TYPE=${{ github.event.inputs.backendType || 'lambda' }}
+
+          # Determine subdomain based on backend type
+          if [ "$BACKEND_TYPE" == "lambda" ]; then
+            SUBDOMAIN="lambda"
           else
-            echo "BACKEND_URL=https://devapi.${{ secrets.ROOT_DOMAIN }}" >> $GITHUB_OUTPUT
+            SUBDOMAIN="api"
           fi
+
+          # Construct backend URL based on environment
+          if [ "$ENV" == "prod" ]; then
+            BACKEND_URL="https://${SUBDOMAIN}.${{ secrets.ROOT_DOMAIN }}"
+          elif [ "$ENV" == "staging" ]; then
+            BACKEND_URL="https://${SUBDOMAIN}.staging.${{ secrets.ROOT_DOMAIN }}"
+          else
+            BACKEND_URL="https://${SUBDOMAIN}.dev.${{ secrets.ROOT_DOMAIN }}"
+          fi
+
+          echo "BACKEND_URL=$BACKEND_URL" >> $GITHUB_OUTPUT
+          echo "BACKEND_TYPE=$BACKEND_TYPE" >> $GITHUB_OUTPUT
+
+          echo "✓ Backend configuration:"
+          echo "  Type: $BACKEND_TYPE"
+          echo "  Subdomain: $SUBDOMAIN"
+          echo "  URL: $BACKEND_URL"
 
       - name: Get Google Client ID from Secrets Manager
         id: get-google-client-id
@@ -104,7 +130,7 @@ jobs:
           VITE_BACKEND_URL: ${{ steps.set-backend-url.outputs.BACKEND_URL }}
           VITE_APP_ENV: ${{ steps.determine-env.outputs.DEPLOY_ENV }}
           VITE_GOOGLE_CLIENT_ID: ${{ steps.get-google-client-id.outputs.GOOGLE_CLIENT_ID }}
-        run: npm run build
+        run: npm run build-only
 
       - name: Install CDK dependencies
         working-directory: iac
@@ -174,6 +200,7 @@ jobs:
           echo "### Frontend Deployment Summary :rocket:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- **Environment**: ${{ steps.determine-env.outputs.DEPLOY_ENV }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend Type**: ${{ steps.set-backend-url.outputs.BACKEND_TYPE }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Backend URL**: ${{ steps.set-backend-url.outputs.BACKEND_URL }}" >> $GITHUB_STEP_SUMMARY
           echo "- **CloudFront Distribution**: ${{ steps.get-distribution.outputs.DISTRIBUTION_ID }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
