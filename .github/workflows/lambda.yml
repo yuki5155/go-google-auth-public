@@ -1,6 +1,9 @@
 name: Lambda Stack
 
 on:
+  push:
+    branches:
+      - 12-add-lambda-handlers
   workflow_dispatch:
     inputs:
       environment:
