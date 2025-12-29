@@ -53,9 +53,13 @@ async function initAuth(): Promise<void> {
           user.value = data.user
         }
       }
+    } else {
+      const errorData = await response.json().catch(() => ({}))
+      console.error('Auth initialization failed:', response.status, errorData)
     }
   } catch (err) {
     console.error('Failed to initialize auth:', err)
+    error.value = err instanceof Error ? `Connection Error: ${err.message}` : 'Failed to connect to backend'
     user.value = null
   } finally {
     isLoading.value = false

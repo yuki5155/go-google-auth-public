@@ -21,7 +21,23 @@ func init() {
 	}
 
 	r := ginpkg.Default()
-	r.Use(corsMiddleware(cfg))
+	
+	// Add CORS middleware
+	r.Use(func(c *ginpkg.Context) {
+		origin := c.Request.Header.Get("Origin")
+		if origin == "" {
+			origin = "*"
+		}
+		c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		c.Next()
+	})
 
 	healthHandler := handlers.NewHealthHandler()
 	r.GET("/health", healthHandler.Handle)
@@ -36,30 +52,4 @@ func Handler(ctx context.Context, req events.APIGatewayProxyRequest) (events.API
 
 func main() {
 	lambda.Start(Handler)
-}
-
-func corsMiddleware(cfg *config.Config) ginpkg.HandlerFunc {
-	return func(c *ginpkg.Context) {
-		origin := c.Request.Header.Get("Origin")
-		allowed := false
-		for _, allowedOrigin := range cfg.AllowedOrigins {
-			if origin == allowedOrigin || allowedOrigin == "*" {
-				allowed = true
-				break
-			}
-		}
-		if allowed {
-			c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
-		} else if len(cfg.AllowedOrigins) > 0 {
-			c.Writer.Header().Set("Access-Control-Allow-Origin", cfg.AllowedOrigins[0])
-		}
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-		c.Next()
-	}
 }
