@@ -4,22 +4,22 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/yuki5155/go-google-auth/internal/config"
-	"github.com/yuki5155/go-google-auth/internal/router"
-	"github.com/yuki5155/go-google-auth/internal/services"
+	"github.com/yuki5155/go-google-auth/internal/infrastructure/config"
+	"github.com/yuki5155/go-google-auth/internal/infrastructure/container"
+	"github.com/yuki5155/go-google-auth/internal/presentation/http/router"
 )
 
 func main() {
-	// 設定の読み込み
+	// Load configuration
 	cfg := config.Load()
 
-	// サービスの初期化
-	jwtService := services.NewJWTService(cfg.JWTSecret)
+	// Create dependency injection container
+	c := container.NewContainer(cfg)
 
-	// ルーターのセットアップ
-	r := router.Setup(cfg, jwtService)
+	// Setup router with container
+	r := router.Setup(c)
 
-	// サーバー起動
+	// Start server
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	log.Printf("Starting server on %s", addr)
 	if err := r.Run(addr); err != nil {

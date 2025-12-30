@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/yuki5155/go-google-auth/internal/config"
+	"github.com/yuki5155/go-google-auth/internal/infrastructure/config"
 )
 
 // CookieHandler はCookieテスト用のハンドラー

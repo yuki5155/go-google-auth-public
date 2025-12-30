@@ -4,11 +4,11 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/yuki5155/go-google-auth/internal/services"
+	"github.com/yuki5155/go-google-auth/internal/application/ports"
 )
 
-// AuthMiddleware creates a middleware for JWT authentication
-func AuthMiddleware(jwtService *services.JWTService) gin.HandlerFunc {
+// Auth creates a middleware for JWT authentication using ports.TokenGenerator
+func Auth(tokenGen ports.TokenGenerator) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accessToken, err := c.Cookie("access_token")
 		if err != nil {
@@ -20,9 +20,9 @@ func AuthMiddleware(jwtService *services.JWTService) gin.HandlerFunc {
 			return
 		}
 
-		claims, err := jwtService.ValidateAccessToken(accessToken)
+		claims, err := tokenGen.ValidateAccessToken(accessToken)
 		if err != nil {
-			if err == services.ErrExpiredToken {
+			if ports.IsTokenExpired(err) {
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error":   "token_expired",
 					"message": "Access token has expired",
@@ -43,13 +43,14 @@ func AuthMiddleware(jwtService *services.JWTService) gin.HandlerFunc {
 		c.Set("email", claims.Email)
 		c.Set("name", claims.Name)
 		c.Set("picture", claims.Picture)
+		c.Set("claims", claims)
 
 		c.Next()
 	}
 }
 
-// OptionalAuthMiddleware creates a middleware that validates JWT if present but doesn't require it
-func OptionalAuthMiddleware(jwtService *services.JWTService) gin.HandlerFunc {
+// OptionalAuth creates a middleware that validates JWT if present but doesn't require it
+func OptionalAuth(tokenGen ports.TokenGenerator) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		accessToken, err := c.Cookie("access_token")
 		if err != nil {
@@ -58,7 +59,7 @@ func OptionalAuthMiddleware(jwtService *services.JWTService) gin.HandlerFunc {
 			return
 		}
 
-		claims, err := jwtService.ValidateAccessToken(accessToken)
+		claims, err := tokenGen.ValidateAccessToken(accessToken)
 		if err != nil {
 			// Invalid token, but still continue - user is just not authenticated
 			c.Next()
@@ -70,6 +71,7 @@ func OptionalAuthMiddleware(jwtService *services.JWTService) gin.HandlerFunc {
 		c.Set("email", claims.Email)
 		c.Set("name", claims.Name)
 		c.Set("picture", claims.Picture)
+		c.Set("claims", claims)
 		c.Set("authenticated", true)
 
 		c.Next()

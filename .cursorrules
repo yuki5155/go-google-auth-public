@@ -81,6 +81,7 @@ This is a full-stack web application for Google OAuth authentication with sessio
    - Update README.md when adding new features
    - Document API endpoints in code
    - Add inline comments for complex business logic
+   - Update test coverage in README.md when coverage changes significantly (±1%)
 
 ### Backend (Go) Guidelines
 
@@ -295,6 +296,34 @@ VITE_APP_ENV=development
 - Frontend API URL: `https://api.yourdomain.com`
 
 ## Testing Guidelines
+
+### Unit Testing
+
+1. **Go Backend Tests**
+   - Use `testify` for assertions
+   - Use `gomock` for generating type-safe mocks
+   - Run tests with: `make test` or `go test ./internal/...`
+   - Generate coverage: `make test-coverage`
+   - Target: Maintain 80%+ coverage (currently at 95.6%)
+
+2. **Mock Generation**
+   - Generate mocks using: `go run go.uber.org/mock/mockgen@latest -source=<source_file> -destination=internal/mocks/<mock_file> -package=mocks`
+   - Place all mocks in `internal/mocks/` directory
+   - Never write manual mocks - always use gomock
+
+3. **Test Structure**
+   - Each test should use `gomock.NewController(t)` and `defer ctrl.Finish()`
+   - Use `EXPECT()` pattern for setting expectations
+   - Test success paths, error cases, and edge conditions
+   - Follow naming convention: `Test<FunctionName>_<Scenario>`
+
+4. **Coverage Updates**
+   - When coverage changes by ±1%, update README.md:
+     - Update coverage badge percentage
+     - Update test count
+     - Update coverage table by layer
+   - Run `go tool cover -func=coverage.out | grep total:` to get total coverage
+   - Count tests with: `go test ./internal/... -v | grep "^===" | wc -l`
 
 ### Manual Testing Flow
 

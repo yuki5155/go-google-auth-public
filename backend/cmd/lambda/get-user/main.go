@@ -6,47 +6,31 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	ginadapter "github.com/awslabs/aws-lambda-go-api-proxy/gin"
-	ginpkg "github.com/gin-gonic/gin"
-	"github.com/yuki5155/go-google-auth/internal/config"
-	"github.com/yuki5155/go-google-auth/internal/handlers"
-	"github.com/yuki5155/go-google-auth/internal/middleware"
-	"github.com/yuki5155/go-google-auth/internal/services"
+	"github.com/yuki5155/go-google-auth/internal/presentation/http/handlers"
+	"github.com/yuki5155/go-google-auth/internal/presentation/http/middleware"
+	"github.com/yuki5155/go-google-auth/internal/presentation/lambda/common"
 )
 
 var ginLambda *ginadapter.GinLambda
 
 func init() {
-	cfg := config.Load()
-	jwtService := services.NewJWTService(cfg.JWTSecret)
+	// Bootstrap with shared initialization
+	r, c := common.Bootstrap()
 
-	if cfg.IsProduction() {
-		ginpkg.SetMode(ginpkg.ReleaseMode)
-	}
+	// Create auth handler using use cases from container
+	authHandler := handlers.NewAuthHandler(
+		c.GoogleLoginUseCase,
+		c.RefreshTokenUseCase,
+		c.GetCurrentUserUseCase,
+		c.LogoutUseCase,
+		c.TokenGenerator,
+		c.Config,
+	)
 
-	r := ginpkg.Default()
-	
-	// Add CORS middleware
-	r.Use(func(c *ginpkg.Context) {
-		origin := c.Request.Header.Get("Origin")
-		if origin == "" {
-			origin = "*"
-		}
-		c.Writer.Header().Set("Access-Control-Allow-Origin", origin)
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-		c.Next()
-	})
+	// Register protected route with auth middleware
+	r.GET("/api/me", middleware.Auth(c.TokenGenerator), authHandler.GetCurrentUser)
 
-	authHandler := handlers.NewAuthHandler(cfg, jwtService)
-
-	// Protected route - requires authentication
-	r.GET("/api/me", middleware.AuthMiddleware(jwtService), authHandler.GetCurrentUser)
-
+	// Wrap Gin router with Lambda adapter
 	ginLambda = ginadapter.New(r)
 }
 

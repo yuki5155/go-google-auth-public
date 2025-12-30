@@ -1,19 +1,22 @@
-package services
+package jwt
 
 import (
 	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/yuki5155/go-google-auth/internal/application/ports"
 )
 
-var (
-	ErrInvalidToken = errors.New("invalid token")
-	ErrExpiredToken = errors.New("token has expired")
-)
+// Service handles JWT token operations and implements ports.TokenGenerator
+type Service struct {
+	secretKey          []byte
+	accessTokenExpiry  time.Duration
+	refreshTokenExpiry time.Duration
+}
 
-// TokenClaims represents the claims stored in JWT tokens
-type TokenClaims struct {
+// tokenClaims represents the internal JWT claims structure
+type tokenClaims struct {
 	UserID    string `json:"user_id"`
 	Email     string `json:"email"`
 	Name      string `json:"name"`
@@ -22,32 +25,17 @@ type TokenClaims struct {
 	jwt.RegisteredClaims
 }
 
-// JWTService handles JWT token operations
-type JWTService struct {
-	secretKey          []byte
-	accessTokenExpiry  time.Duration
-	refreshTokenExpiry time.Duration
-}
-
-// NewJWTService creates a new JWTService instance
-func NewJWTService(secretKey string) *JWTService {
-	return &JWTService{
+// NewService creates a new JWT Service instance
+func NewService(secretKey string) *Service {
+	return &Service{
 		secretKey:          []byte(secretKey),
 		accessTokenExpiry:  15 * time.Minute,   // Access token expires in 15 minutes
 		refreshTokenExpiry: 7 * 24 * time.Hour, // Refresh token expires in 7 days
 	}
 }
 
-// UserInfo contains user information for token generation
-type UserInfo struct {
-	UserID  string
-	Email   string
-	Name    string
-	Picture string
-}
-
 // GenerateTokenPair generates both access and refresh tokens
-func (s *JWTService) GenerateTokenPair(user UserInfo) (accessToken, refreshToken string, err error) {
+func (s *Service) GenerateTokenPair(user ports.UserInfo) (accessToken, refreshToken string, err error) {
 	accessToken, err = s.generateToken(user, "access", s.accessTokenExpiry)
 	if err != nil {
 		return "", "", err
@@ -62,9 +50,9 @@ func (s *JWTService) GenerateTokenPair(user UserInfo) (accessToken, refreshToken
 }
 
 // generateToken creates a JWT token with the specified claims
-func (s *JWTService) generateToken(user UserInfo, tokenType string, expiry time.Duration) (string, error) {
+func (s *Service) generateToken(user ports.UserInfo, tokenType string, expiry time.Duration) (string, error) {
 	now := time.Now()
-	claims := TokenClaims{
+	claims := tokenClaims{
 		UserID:    user.UserID,
 		Email:     user.Email,
 		Name:      user.Name,
@@ -84,66 +72,72 @@ func (s *JWTService) generateToken(user UserInfo, tokenType string, expiry time.
 }
 
 // ValidateToken validates a JWT token and returns the claims
-func (s *JWTService) ValidateToken(tokenString string) (*TokenClaims, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &TokenClaims{}, func(token *jwt.Token) (interface{}, error) {
+func (s *Service) validateToken(tokenString string) (*tokenClaims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &tokenClaims{}, func(token *jwt.Token) (interface{}, error) {
 		// Validate the signing method
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, ErrInvalidToken
+			return nil, ports.ErrInvalidToken
 		}
 		return s.secretKey, nil
 	})
 
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
-			return nil, ErrExpiredToken
+			return nil, ports.ErrExpiredToken
 		}
-		return nil, ErrInvalidToken
+		return nil, ports.ErrInvalidToken
 	}
 
-	claims, ok := token.Claims.(*TokenClaims)
+	claims, ok := token.Claims.(*tokenClaims)
 	if !ok || !token.Valid {
-		return nil, ErrInvalidToken
+		return nil, ports.ErrInvalidToken
 	}
 
 	return claims, nil
 }
 
-// ValidateAccessToken validates an access token
-func (s *JWTService) ValidateAccessToken(tokenString string) (*TokenClaims, error) {
-	claims, err := s.ValidateToken(tokenString)
+// ValidateAccessToken validates an access token and returns the claims
+func (s *Service) ValidateAccessToken(tokenString string) (*ports.TokenClaims, error) {
+	claims, err := s.validateToken(tokenString)
 	if err != nil {
 		return nil, err
 	}
 
 	if claims.TokenType != "access" {
-		return nil, ErrInvalidToken
+		return nil, ports.ErrInvalidToken
 	}
 
-	return claims, nil
+	// Convert to ports.TokenClaims
+	return &ports.TokenClaims{
+		UserID:  claims.UserID,
+		Email:   claims.Email,
+		Name:    claims.Name,
+		Picture: claims.Picture,
+	}, nil
 }
 
-// ValidateRefreshToken validates a refresh token
-func (s *JWTService) ValidateRefreshToken(tokenString string) (*TokenClaims, error) {
-	claims, err := s.ValidateToken(tokenString)
+// validateRefreshToken validates a refresh token
+func (s *Service) validateRefreshToken(tokenString string) (*tokenClaims, error) {
+	claims, err := s.validateToken(tokenString)
 	if err != nil {
 		return nil, err
 	}
 
 	if claims.TokenType != "refresh" {
-		return nil, ErrInvalidToken
+		return nil, ports.ErrInvalidToken
 	}
 
 	return claims, nil
 }
 
 // RefreshAccessToken generates a new access token from a valid refresh token
-func (s *JWTService) RefreshAccessToken(refreshTokenString string) (string, error) {
-	claims, err := s.ValidateRefreshToken(refreshTokenString)
+func (s *Service) RefreshAccessToken(refreshTokenString string) (string, error) {
+	claims, err := s.validateRefreshToken(refreshTokenString)
 	if err != nil {
 		return "", err
 	}
 
-	user := UserInfo{
+	user := ports.UserInfo{
 		UserID:  claims.UserID,
 		Email:   claims.Email,
 		Name:    claims.Name,
@@ -154,11 +148,11 @@ func (s *JWTService) RefreshAccessToken(refreshTokenString string) (string, erro
 }
 
 // GetAccessTokenExpiry returns the access token expiry duration in seconds
-func (s *JWTService) GetAccessTokenExpiry() int {
+func (s *Service) GetAccessTokenExpiry() int {
 	return int(s.accessTokenExpiry.Seconds())
 }
 
 // GetRefreshTokenExpiry returns the refresh token expiry duration in seconds
-func (s *JWTService) GetRefreshTokenExpiry() int {
+func (s *Service) GetRefreshTokenExpiry() int {
 	return int(s.refreshTokenExpiry.Seconds())
 }
