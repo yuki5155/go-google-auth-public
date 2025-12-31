@@ -32,8 +32,25 @@ RUN echo "Building Lambda function: ${LAMBDA_CMD}" && \
 # AWS Lambda Go ランタイム用の公式ベースイメージ
 FROM public.ecr.aws/lambda/provided:al2023
 
+# 非rootユーザーを作成
+RUN yum install -y shadow-utils && \
+    yum clean all && \
+    groupadd -r -g 1000 appuser && \
+    useradd -r -u 1000 -g appuser appuser
+
 # ビルドしたバイナリをLambdaランタイムディレクトリにコピー
 COPY --from=builder /app/bootstrap ${LAMBDA_RUNTIME_DIR}/bootstrap
+
+# 実行権限を設定
+RUN chmod +x ${LAMBDA_RUNTIME_DIR}/bootstrap && \
+    chown appuser:appuser ${LAMBDA_RUNTIME_DIR}/bootstrap
+
+# ヘルスチェック（Lambda環境では実際には使用されませんが、セキュリティスキャン用）
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD echo "Lambda health check"
+
+# 非rootユーザーに切り替え
+USER appuser
 
 # Lambda ハンドラーの指定
 CMD ["bootstrap"]

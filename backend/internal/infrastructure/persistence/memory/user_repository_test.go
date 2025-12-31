@@ -94,7 +94,7 @@ func TestUserRepository_FindByID_Success(t *testing.T) {
 	profile := user.NewProfile("Test User", "https://example.com/photo.jpg")
 	u, _ := user.NewUser(userID, email, profile)
 
-	repo.Save(ctx, u)
+	_ = repo.Save(ctx, u)
 
 	foundUser, err := repo.FindByID(ctx, userID)
 
@@ -126,7 +126,7 @@ func TestUserRepository_FindByEmail_Success(t *testing.T) {
 	profile := user.NewProfile("Test User", "")
 	u, _ := user.NewUser(userID, email, profile)
 
-	repo.Save(ctx, u)
+	_ = repo.Save(ctx, u)
 
 	foundUser, err := repo.FindByEmail(ctx, email)
 
@@ -157,7 +157,7 @@ func TestUserRepository_Delete_Success(t *testing.T) {
 	profile := user.NewProfile("Test User", "")
 	u, _ := user.NewUser(userID, email, profile)
 
-	repo.Save(ctx, u)
+	_ = repo.Save(ctx, u)
 
 	err := repo.Delete(ctx, userID)
 
@@ -191,7 +191,7 @@ func TestUserRepository_Exists_True(t *testing.T) {
 	profile := user.NewProfile("Test User", "")
 	u, _ := user.NewUser(userID, email, profile)
 
-	repo.Save(ctx, u)
+	_ = repo.Save(ctx, u)
 
 	exists, err := repo.Exists(ctx, userID)
 
@@ -220,7 +220,7 @@ func TestUserRepository_ExistsByEmail_True(t *testing.T) {
 	profile := user.NewProfile("Test User", "")
 	u, _ := user.NewUser(userID, email, profile)
 
-	repo.Save(ctx, u)
+	_ = repo.Save(ctx, u)
 
 	exists, err := repo.ExistsByEmail(ctx, email)
 
@@ -253,7 +253,7 @@ func TestUserRepository_ConcurrentAccess(t *testing.T) {
 			profile := user.NewProfile("User "+string(rune('a'+index)), "")
 			u, _ := user.NewUser(userID, email, profile)
 
-			repo.Save(ctx, u)
+			_ = repo.Save(ctx, u)
 			done <- true
 		}(i)
 	}
