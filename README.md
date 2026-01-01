@@ -174,7 +174,7 @@ The GitHub Actions workflow automatically:
 ## 📁 Project Structure
 
 ```
-o-google-auth-public/
+go-google-auth-public/
 │
 ├── backend/                    # Go backend application
 │   ├── cmd/
@@ -272,7 +272,7 @@ Optional (for local development without Docker):
 1. **Clone the repository**
    ```bash
    git clone https://github.com/yuki5155/go-google-auth-public.git
-   cd go-google-auth/go-google-auth-public
+   cd go-google-auth-public
    ```
 
 2. **Set up Google OAuth credentials** (see [Google OAuth Setup](#google-oauth-setup) below)
