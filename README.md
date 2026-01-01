@@ -11,6 +11,7 @@ A full-stack web application for Google OAuth authentication with comprehensive 
 
 - [Overview](#overview)
 - [Features](#features)
+- [Test Coverage](#test-coverage)
 - [Technology Stack](#technology-stack)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
@@ -23,6 +24,9 @@ A full-stack web application for Google OAuth authentication with comprehensive 
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [License](#license)
+- [Author](#author)
+- [Resources](#resources)
+- [Project Status](#project-status)
 
 ## 🎯 Overview
 
@@ -170,7 +174,7 @@ The GitHub Actions workflow automatically:
 ## 📁 Project Structure
 
 ```
-go-google-auth/
+o-google-auth-public/
 │
 ├── backend/                    # Go backend application
 │   ├── cmd/
@@ -267,8 +271,8 @@ Optional (for local development without Docker):
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yuki5155/go-google-auth.git
-   cd go-google-auth
+   git clone https://github.com/yuki5155/go-google-auth-public.git
+   cd go-google-auth/go-google-auth-public
    ```
 
 2. **Set up Google OAuth credentials** (see [Google OAuth Setup](#google-oauth-setup) below)
